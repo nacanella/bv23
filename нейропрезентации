@@ -1,0 +1,130 @@
+import sys
+import spacy
+import textacy.extract
+from pptx import Presentation
+import pymorphy2
+from bs4 import BeautifulSoup as bs
+import random
+import requests
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QPlainTextEdit
+
+def replace_name_with_placeholder(token):
+    print(1)
+    if token.ent_iob != 0 and token.ent_type_ == "PERSON":
+        return token.string.lower().capitalize()
+    else:
+        return token.string
+
+def scrub(text):
+    doc = nlp(text)
+    for ent in doc.ents:
+        ent.merge()
+    tokens = map(replace_name_with_placeholder, doc)
+    return "".join(tokens)
+
+def norm(x):
+    morph = pymorphy2.MorphAnalyzer()
+    p = morph.parse(x)[0]
+    return p.normal_form
+
+class Example(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle('Нейропрезентации')
+        self.nlp = nlp
+
+        self.btn = QPushButton("Создать презентацию", self)
+        self.btn.resize(150, 25)
+        self.btn.clicked.connect(self.run)
+        self.txt = QPlainTextEdit(self)
+        self.txt.resize(300, 300)
+        self.txt.move(10, 10)
+        self.btn.move(10, 320)
+        self.meanings = []
+
+    def run(self):
+        name = self.txt.toPlainText().split("\n")[0]
+        # создаем новую презентацию
+        prs = Presentation("1.pptx")
+        # получаем схему расположения элементов для заголовочного слайда
+        title_slide_layout = prs.slide_layouts[0]
+        # создаем заголовочный слайд
+        slide = prs.slides.add_slide(title_slide_layout)
+        # создаем у слайда заголовок и текст
+        title = slide.shapes.title
+        print("Контейнер для текста:", slide.placeholders[1])
+        subtitle = slide.placeholders[1]
+        title.text = name
+        subtitle.text = "Создано программой NeiroPresentation"
+
+        paragraphs = self.txt.toPlainText().split("\n")[1:]
+        for el in paragraphs:
+            if not el:
+                continue
+            doc = self.nlp(el)
+            statements = textacy.extract.keyterms.scake(doc)
+            for statement in statements:
+                meaning, a = statement
+                if meaning in self.meanings:
+                    continue
+                break
+            self.meanings.append(meaning)
+
+            gm = meaning
+            a = ''.join(list(filter(lambda x: x.isalnum() or x in [" ", "-"], list(el))))
+            a1 = a.split()
+            gm1 = gm.split()
+            j = ''
+            for i in gm1:
+                for i1 in a1:
+                    if norm(i) == norm(i1):
+                        j = j + i1 + ' '
+                        break
+#            j = " ".join(list(map(lambda x: x.lower(), j.split()))).capitalize()
+            j = list(j)[0].upper() + "".join(list(j)[1:])
+
+
+            f = j
+            r = requests.get("https://www.google.ru/search?tbm=isch&q=%s" % f)
+            text = r.text
+            soup = bs(text, "html.parser")
+            theresult = {}
+            links = []
+            i = 0
+            for qwerty in soup.find_all('img'):
+                theresult[i] = qwerty.get('src')
+                links.append(theresult[i])
+                i = i + 1
+            link = links[random.randint(1, len(links) - 1)]
+            print(link)
+            print(meaning)
+
+            img_data = requests.get(theresult[random.randint(1, 19)]).content
+            with open('картинка.jpg', 'wb') as handler:
+                handler.write(img_data)
+
+            print(j)
+
+            # создаем новый слайд со схемой для добавления изображений
+            slide = prs.slides.add_slide(prs.slide_layouts[8])
+            slide.shapes.title.text = j
+            # добавляем изображение
+            print("Контейнер для изображения:", slide.placeholders[1])
+            placeholder = slide.placeholders[1]
+            placeholder.insert_picture('картинка.jpg')
+            # сохраняем презентацию
+            prs.save('test.pptx')
+        exit()
+
+
+
+
+if __name__ == '__main__':
+    nlp = spacy.load("ru_core_news_lg")
+    app = QApplication(sys.argv)
+    ex = Example()
+    ex.show()
+    sys.exit(app.exec())
