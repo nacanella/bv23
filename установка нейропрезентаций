@@ -1,0 +1,10 @@
+import subprocess
+
+subprocess.check_call(["python", '-m', 'pip', 'install', 'spacy'])
+subprocess.check_call(["python", '-m', 'pip', 'install', 'textacy'])
+subprocess.check_call(["python", '-m', 'pip', 'install', 'pymorphy2'])
+subprocess.check_call(["python", '-m', 'pip', 'install', 'BeautifulSoup4'])
+subprocess.check_call(["python", '-m', 'pip', 'install', 'PyQt5'])
+subprocess.check_call(["python", '-m', 'pip', 'install', 'python-pptx'])
+subprocess.check_call(["python", '-m', 'pip', 'install', 'requests'])
+subprocess.check_call(["python", '-m', 'spacy', 'download', 'ru_core_news_lg'])
